@@ -53,46 +53,68 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 
 	float *vec_cpy;
 	float *mat_cpy;
-
+	
+	// copy to a new matrix and vector
 	memcpy(vec_cpy, vec, SIZE * sizeof(float));
 	memcpy(mat_cpy, mat, SIZE * SIZE * sizeof(float));
 	
-	int last = SIZE / 64;
-	int remainder = SIZE % 64;
-	if (remainder == 0)
-		remainder = 64;
-	for (int r = 0; r < last; ++r){
-		for (int c = 0; c < last; ++c) {
+	
+	int last_r = M / SIZE;
+	int remainder_r = M % SIZE;
+	int last_c = N / SIZE;
+	int remainder_c = N % SIZE;
+
+	if (remainder_r == 0)
+		remainder_r = 64;
+	if (remainder_c == 0)
+		remainder_c = 64;
+
+	for (int r = 0; r < last_r; ++r){
+		for (int c = 0; c < last_c; ++c) {
 			
+			// ----------------Assign Vector-----------------------------
 			float * vec_calc;
-			vec_calc = c *  64 * sizeof(float) + vec_cpy;
-			if (c == last-1){
-				memcpy(this->data_, vec_calc, remainder * sizeof(float));
-				memset(this->data_ + remainder*sizeof(float),'\0', (64-remainder) * sizeof(float));
+			vec_calc = c *  SIZE * sizeof(float) + vec_cpy;
+			if (c == last_c-1){
+				memcpy(this->data_, vec_calc, remainder_c * sizeof(float));
+				memset(this->data_ + remainder_c * sizeof(float),'\0', (SIZE-remainder_c) * sizeof(float));
 			}
 			else
-				memcpy(this->data_, vec_calc, 64 * sizeof(float));
-		
-			float* addr = this->data_ + 64 * sizeof(float);
-			for (int i = 0; i < 64; ++i){
-                float* mat_start = mat + (r * SIZE + c + SIZE * i) * sizeof(float);
-                if (r * 64 + i >= SIZE)
-                    memset(addr, '\0', 64 * sizeof(float));
+				memcpy(this->data_, vec_calc, SIZE * sizeof(float));
+			
+			//-----------------Assign Matrix--------------------------------
+			
+			//start of the matrix of ith row address to be put
+			float* addr = this->data_ + SIZE * sizeof(float);
+			
+			for (int i = 0; i < SIZE; ++i){
+				// start of the matrix to get
+                float* mat_start = mat + ((r + i) * N + c) * sizeof(float);
+				
+                if (r + i >= M)
+                    memset(addr, '\0', SIZE * sizeof(float));
                 else {
-                    if (c == last-1){
-                        memcpy(addr, mat_start, remainder * sizeof(float));
-                        memset(addr + remainder * sizeof(float), '\0', (64-remainder)*sizeof(float));
+                    if (c == last_c-1){
+                        memcpy(addr, mat_start, remainder_c * sizeof(float));
+                        memset(addr + remainder * sizeof(float), '\0', (SIZE-remainder_c)*sizeof(float));
                     }
                     else
-                        memcpy(addr, mat_start, 64 * sizeof(float));
+                        memcpy(addr, mat_start, SIZE * sizeof(float));
                 }
-				
-				
-				addr += 64 * sizeof(float);
+				addr += SIZE * sizeof(float);
 			}
-			const float *out_calc = this->run();
-			memcpy(out + c * sizeof(float), out_calc, 64 * sizeof(float));
+			
 
+			// get result
+			const float *out_calc = this->run();
+			
+			float* prev_result;
+			memcpy(prev_result, out + c * sizeof(float), SIZE * sizeof(float));
+			for (int i = 0; i < SIZE; ++i)
+				(&prev_result) += (&prev_result) + (&out_calc);
+
+			// copy the previous result and add back to the new out
+			memcpy(out + c * sizeof(float), prev_result, SIZE * sizeof(float));
 		}
 	
 	}
