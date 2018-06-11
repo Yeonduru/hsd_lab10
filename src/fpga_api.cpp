@@ -1,9 +1,10 @@
 #include "fpga_api.h"
 #include <cstring>
-
+#include <istream>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <cstdio>
 
 #define DATA_SIZE SIZE*(SIZE+1)*sizeof(float) // fpga bram data size
 
@@ -47,18 +48,21 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 		float* output, int M, int N)
 {
     // write down your code here.
-
+	printf("Start!\n");
     float* vec = this->vector();
     float* mat = this->matrix();
 
-	float *vec_cpy;
-	float *mat_cpy;
+	float *vec_cpy = new float[M];
+	float *mat_cpy = new float[M*N];
 	
 	// copy to a new matrix and vector
-	memcpy(vec_cpy, vec, SIZE * sizeof(float));
-	memcpy(mat_cpy, mat, SIZE * SIZE * sizeof(float));
+	memcpy(vec_cpy, input, M * sizeof(float));
+	memcpy(mat_cpy, input + M , M * N * sizeof(float));
 	
-	
+	printf("Copied!\n");
+	//set output to zero
+	memset(output, '\0', M * sizeof(float)); 
+
 	int last_r = M / SIZE;
 	int remainder_r = M % SIZE;
 	int last_c = N / SIZE;
@@ -74,47 +78,50 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 			
 			// ----------------Assign Vector-----------------------------
 			float * vec_calc;
-			vec_calc = c *  SIZE * sizeof(float) + vec_cpy;
-			if (c == last_c-1){
-				memcpy(this->data_, vec_calc, remainder_c * sizeof(float));
-				memset(this->data_ + remainder_c * sizeof(float),'\0', (SIZE-remainder_c) * sizeof(float));
+			vec_calc = c *  SIZE + vec_cpy;
+			if (c == last_c){
+				memcpy(vec, vec_calc, remainder_c * sizeof(float));
+				memset(vec + remainder_c * sizeof(float),'\0', (SIZE-remainder_c) * sizeof(float));
 			}
 			else
-				memcpy(this->data_, vec_calc, SIZE * sizeof(float));
-			
+				memcpy(vec, vec_calc, SIZE * sizeof(float));
+			printf("Vector assigned\n");
+
+			}
 			//-----------------Assign Matrix--------------------------------
 			
 			//start of the matrix of ith row address to be put
-			float* addr = this->data_ + SIZE * sizeof(float);
+			float* addr = mat;
 			
 			for (int i = 0; i < SIZE; ++i){
 				// start of the matrix to get
-                float* mat_start = mat + ((r + i) * N + c) * sizeof(float);
+                float* mat_start = mat_cpy + ((r + i) * N + c);
 				
                 if (r + i >= M)
                     memset(addr, '\0', SIZE * sizeof(float));
                 else {
-                    if (c == last_c-1){
+                    if (c == last_c){
                         memcpy(addr, mat_start, remainder_c * sizeof(float));
-                        memset(addr + remainder * sizeof(float), '\0', (SIZE-remainder_c)*sizeof(float));
+                        memset(addr + remainder_c * sizeof(float), '\0', (SIZE-remainder_c)*sizeof(float));
                     }
-                    else
+                    else {
+			printf("here?\n");
                         memcpy(addr, mat_start, SIZE * sizeof(float));
+			}
                 }
 				addr += SIZE * sizeof(float);
 			}
-			
 
 			// get result
 			const float *out_calc = this->run();
 			
 			float* prev_result;
-			memcpy(prev_result, out + c * sizeof(float), SIZE * sizeof(float));
+			memcpy(prev_result, output + c * sizeof(float), SIZE * sizeof(float));
 			for (int i = 0; i < SIZE; ++i)
-				(&prev_result) += (&prev_result) + (&out_calc);
+				(*prev_result) += (*prev_result) + (*out_calc);
 
 			// copy the previous result and add back to the new out
-			memcpy(out + c * sizeof(float), prev_result, SIZE * sizeof(float));
+			memcpy(output + c * sizeof(float), prev_result, SIZE * sizeof(float));
 		}
 	
 	}
