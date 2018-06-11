@@ -54,39 +54,39 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 	float *vec_cpy = new float[M];
 	float *mat_cpy = new float[M*N];
 	
-	memcpy(vec, input, sizeof(float) * SIZE);
-	memcpy(mat, input + M, sizeof(float) * SIZE * SIZE);	
+	//memcpy(vec, input, sizeof(float) * SIZE);
+	//memcpy(mat, input + M, sizeof(float) * SIZE * SIZE);	
 
 	// copy to a new matrix and vector
 	memcpy(vec_cpy, input, M * sizeof(float));
 	memcpy(mat_cpy, input + M , M * N * sizeof(float));
 	
 	//set output to zero
-	memset(output, '\0', M * sizeof(float)); 
+	float *output_temp = new float[M + SIZE];
+	memset(output_temp, '\0', (M + SIZE) * sizeof(float)); 
 
-	int last_r = M / SIZE;
+	int quotient_r = M / SIZE;
 	int remainder_r = M % SIZE;
-	int last_c = N / SIZE;
+	int quotient_c = N / SIZE;
 	int remainder_c = N % SIZE;
 
-	if (remainder_r == 0)
-		remainder_r = 64;
-	if (remainder_c == 0)
-		remainder_c = 64;
+	for (int r = 0; r <= quotient_r; ++r){
+		for (int c = 0; c <= quotient_c; ++c) {
 
-	for (int r = 0; r <= last_r; ++r){
-		for (int c = 0; c <= last_c; ++c) {
-			printf("C: %d, R: %d\n", c, r);		
-			// ----------------Assign Vector-----------------------------
 			float * vec_calc;
-			vec_calc = c *  SIZE + vec_cpy;
-			if (c == last_c){
+			vec_calc = c * SIZE + vec_cpy;
+
+			if (c == quotient_c){
 				memcpy(vec, vec_calc, remainder_c * sizeof(float));
 				memset(vec + remainder_c * sizeof(float),'\0', (SIZE-remainder_c) * sizeof(float));
 			}
 			else
 				memcpy(vec, vec_calc, SIZE * sizeof(float));
-			printf("Vector assigned\n");
+			
+			// check vec 
+			printf("vector of r: %d c: %d", r, c);
+			for (int i = 0; i < SIZE; ++i)
+				printf("%f\n", *(vec + i) );
 
 			//-----------------Assign Matrix--------------------------------
 			
@@ -99,32 +99,42 @@ void FPGA::largeMV(const float* large_mat, const float* input,
                 if (r + i >= M)
                     memset(addr, '\0', SIZE * sizeof(float));
                 else {
-                    if (c == last_c){
+                    if (c == quotient_c){
                         memcpy(addr, mat_start, remainder_c * sizeof(float));
                         memset(addr + remainder_c , '\0', (SIZE-remainder_c)*sizeof(float));
                     }
                     else {
                         memcpy(addr, mat_start, SIZE * sizeof(float));
-			
 					}
                 }
 				addr += SIZE;
 			}
+
+			// check vec 
+			printf("Matrix of r: %d c: %d", r, c);
+			for (int i = 0; i < SIZE; ++i){
+				for (int j = 0; j < SIZE; ++j)
+					printf("%f ", *(mat + i * SIZE + j));
+				printf("\n");
+			}
+		
 			// get result
 			const float *out_calc = this->run();
+
+			// check out 
 			for (int i = 0 ; i < SIZE; ++i)
 				printf("%f\n", *(out_calc + i));
 				
 			float* prev_result = new float[SIZE];
-			memcpy(prev_result, output + c * SIZE, SIZE * sizeof(float));
+			memcpy(prev_result, output_temp + c * SIZE, SIZE * sizeof(float));
 			for (int i = 0; i < SIZE; ++i)
 				*(prev_result+i) = *(prev_result+i) + *(out_calc+i);
 
 			// copy the previous result and add back to the new out
-			memcpy(output + c, prev_result, SIZE * sizeof(float));
+			memcpy(output_temp + c * SIZE, prev_result, SIZE * sizeof(float));
 		}
 	
 	}
-
+	memcpy(output, output_temp, M * sizeof(float));
     // write down your code here.
 }
