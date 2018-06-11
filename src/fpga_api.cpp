@@ -53,17 +53,14 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 
 	float *vec_cpy = new float[M];
 	float *mat_cpy = new float[M*N];
-	
-	//memcpy(vec, input, sizeof(float) * SIZE);
-	//memcpy(mat, input + M, sizeof(float) * SIZE * SIZE);	
 
 	// copy to a new matrix and vector
 	memcpy(vec_cpy, input, M * sizeof(float));
 	memcpy(mat_cpy, input + M , M * N * sizeof(float));
 	
 	//set output to zero
-	float *output_temp = new float[M + SIZE];
-	memset(output_temp, 0, (M + SIZE) * sizeof(float)); 
+	float *output_temp = new float[N + SIZE];
+	memset(output_temp, 0, (N + SIZE) * sizeof(float)); 
 
 	int quotient_r = M / SIZE;
 	int remainder_r = M % SIZE;
@@ -72,7 +69,7 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 
 	for (int r = 0; r <= quotient_r; ++r){
 		for (int c = 0; c <= quotient_c; ++c) {
-			memset(vec, 0, N * sizeof(float));
+
 			float * vec_calc;
 			vec_calc = c * SIZE + vec_cpy;
 
@@ -87,8 +84,7 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 			printf("vector of r: %d c: %d", r, c);
 			for (int i = 0; i < SIZE; ++i)
 				printf("%f\n", *(vec + i) );
-			printf("vector end\n");
-			printf("\n");
+			printf("vector end\n\n");
 
 		//-----------------Assign Matrix--------------------------------
 			
@@ -112,32 +108,41 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 				addr += SIZE;
 			}
 
-			// check vec 
-			/*
+			// check mat
 			printf("Matrix of r: %d c: %d", r, c);
 			for (int i = 0; i < SIZE; ++i){
 				for (int j = 0; j < SIZE; ++j)
-					printf("%f ", *(mat + i * SIZE + j));
+					printf("%f", *(mat + i * SIZE + j));
 				printf("\n");
 			}
-			*/
+			printf("\n");
+			
+			
 			// get result
 			const float *out_calc = this->run();
 				
 			// check out 
-			printf("\n");
 			printf("out\n");
 			for (int i = 0 ; i < SIZE; ++i)
 				printf("%f\n", *(out_calc + i));
 			printf("out end\n\n");
+
+
 			float* prev_result = new float[SIZE];
-			memcpy(prev_result, output_temp + c * SIZE, SIZE * sizeof(float));
+			memcpy(prev_result, output_temp + c, SIZE * sizeof(float));
 			for (int i = 0; i < SIZE; ++i)
 				*(prev_result+i) = *(prev_result+i) + *(out_calc+i);
-
 			// copy the previous result and add back to the new out
-			memcpy(output_temp + c * SIZE, prev_result, SIZE * sizeof(float));	
+			memcpy(output_temp + c, prev_result, SIZE * sizeof(float));	
+				
+			// check out 
+			printf("output_temp\n");
+			for (int i = 0 ; i < SIZE; ++i)
+				printf("%f\n", *(out_calc + i));
+			printf("out end\n\n");
 
+
+			memset(vec, 0, N * sizeof(float));
 		}
 	
 	}
