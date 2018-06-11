@@ -63,7 +63,7 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 	
 	//set output to zero
 	float *output_temp = new float[M + SIZE];
-	memset(output_temp, '\0', (M + SIZE) * sizeof(float)); 
+	memset(output_temp, 0, (M + SIZE) * sizeof(float)); 
 
 	int quotient_r = M / SIZE;
 	int remainder_r = M % SIZE;
@@ -72,36 +72,38 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 
 	for (int r = 0; r <= quotient_r; ++r){
 		for (int c = 0; c <= quotient_c; ++c) {
-
+			memset(vec, 0, N * sizeof(float));
 			float * vec_calc;
 			vec_calc = c * SIZE + vec_cpy;
 
 			if (c == quotient_c){
-				memcpy(vec, vec_calc, remainder_c * sizeof(float));
-				memset(vec + remainder_c * sizeof(float),'\0', (SIZE-remainder_c) * sizeof(float));
+				memcpy(vec, vec_calc, remainder_r * sizeof(float));
+				memset(vec + remainder_r ,0, (SIZE-remainder_r) * sizeof(float));
 			}
 			else
 				memcpy(vec, vec_calc, SIZE * sizeof(float));
-			
+				
 			// check vec 
 			printf("vector of r: %d c: %d", r, c);
 			for (int i = 0; i < SIZE; ++i)
 				printf("%f\n", *(vec + i) );
+			printf("vector end\n");
+			printf("\n");
 
-			//-----------------Assign Matrix--------------------------------
+		//-----------------Assign Matrix--------------------------------
 			
 			//start of the matrix of ith row address to be put
 			float* addr = mat;
 			for (int i = 0; i < SIZE; ++i){
 				// start of the matrix to get
-                float* mat_start = mat_cpy + ((r + i) * N + c);
+                float* mat_start = mat_cpy + ((r * SIZE + i) * N  + c * SIZE);
 				
-                if (r + i >= M)
-                    memset(addr, '\0', SIZE * sizeof(float));
+                if (r*SIZE + i >= M)
+                    memset(addr, 0, SIZE * sizeof(float));
                 else {
                     if (c == quotient_c){
                         memcpy(addr, mat_start, remainder_c * sizeof(float));
-                        memset(addr + remainder_c , '\0', (SIZE-remainder_c)*sizeof(float));
+                        memset(addr + remainder_c , 0, (SIZE-remainder_c)*sizeof(float));
                     }
                     else {
                         memcpy(addr, mat_start, SIZE * sizeof(float));
@@ -111,30 +113,34 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 			}
 
 			// check vec 
+			/*
 			printf("Matrix of r: %d c: %d", r, c);
 			for (int i = 0; i < SIZE; ++i){
 				for (int j = 0; j < SIZE; ++j)
 					printf("%f ", *(mat + i * SIZE + j));
 				printf("\n");
 			}
-		
+			*/
 			// get result
 			const float *out_calc = this->run();
-
+				
 			// check out 
+			printf("\n");
+			printf("out\n");
 			for (int i = 0 ; i < SIZE; ++i)
 				printf("%f\n", *(out_calc + i));
-				
+			printf("out end\n\n");
 			float* prev_result = new float[SIZE];
 			memcpy(prev_result, output_temp + c * SIZE, SIZE * sizeof(float));
 			for (int i = 0; i < SIZE; ++i)
 				*(prev_result+i) = *(prev_result+i) + *(out_calc+i);
 
 			// copy the previous result and add back to the new out
-			memcpy(output_temp + c * SIZE, prev_result, SIZE * sizeof(float));
+			memcpy(output_temp + c * SIZE, prev_result, SIZE * sizeof(float));	
+
 		}
 	
 	}
-	memcpy(output, output_temp, M * sizeof(float));
+	memcpy(output, output_temp, N * sizeof(float));
     // write down your code here.
 }
