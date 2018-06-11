@@ -17,9 +17,15 @@ int main(void)
 	float* mat = flat + M;  
 	float* output = new float[N];
 	float* output_fpga = new float[N];
+	
+	for (int i = 0; i < M; ++i)
+		flat[i] = i + 1;
+	for (int i = 0; i < M *N; ++i)
+		flat[i] = (i + 1) % SIZE;
 
-	for(int i = 0 ; i < M*(N+1) ; ++i)
-		flat[i] = ((float)rand()) / RAND_MAX;
+
+	//for(int i = 0 ; i < M*(N+1) ; ++i)
+	//	flat[i] = ((float)rand()) / RAND_MAX;
 
 	// computation
 	for (int i = 0; i < N; i++)		
