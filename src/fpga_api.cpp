@@ -48,7 +48,6 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 		float* output, int M, int N)
 {
     // write down your code here.
-	printf("Start!\n");
     float* vec = this->vector();
     float* mat = this->matrix();
 
@@ -59,7 +58,6 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 	memcpy(vec_cpy, input, M * sizeof(float));
 	memcpy(mat_cpy, input + M , M * N * sizeof(float));
 	
-	printf("Copied!\n");
 	//set output to zero
 	memset(output, '\0', M * sizeof(float)); 
 
@@ -92,7 +90,7 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 			
 			//start of the matrix of ith row address to be put
 			float* addr = mat;
-			
+			printf("Matrix assign");
 			for (int i = 0; i < SIZE; ++i){
 				// start of the matrix to get
                 float* mat_start = mat_cpy + ((r + i) * N + c);
@@ -102,12 +100,12 @@ void FPGA::largeMV(const float* large_mat, const float* input,
                 else {
                     if (c == last_c){
                         memcpy(addr, mat_start, remainder_c * sizeof(float));
-                        memset(addr + remainder_c * sizeof(float), '\0', (SIZE-remainder_c)*sizeof(float));
+                        memset(addr + remainder_c , '\0', (SIZE-remainder_c)*sizeof(float));
                     }
                     else {
-			printf("here?\n");
+						printf("here?\n");
                         memcpy(addr, mat_start, SIZE * sizeof(float));
-			}
+					}
                 }
 				addr += SIZE * sizeof(float);
 			}
@@ -116,12 +114,12 @@ void FPGA::largeMV(const float* large_mat, const float* input,
 			const float *out_calc = this->run();
 			
 			float* prev_result;
-			memcpy(prev_result, output + c * sizeof(float), SIZE * sizeof(float));
+			memcpy(prev_result, output + c, SIZE * sizeof(float));
 			for (int i = 0; i < SIZE; ++i)
 				(*prev_result) += (*prev_result) + (*out_calc);
 
 			// copy the previous result and add back to the new out
-			memcpy(output + c * sizeof(float), prev_result, SIZE * sizeof(float));
+			memcpy(output + c, prev_result, SIZE * sizeof(float));
 		}
 	
 	}
